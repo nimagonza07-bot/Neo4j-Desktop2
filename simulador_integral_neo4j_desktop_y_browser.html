@@ -1,0 +1,1864 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neo4j Desktop & Browser - Simulador Interactivo</title>
+<style>
+  :root {
+    --bg-app: #0b0e14;
+    --bg-sidebar: #111622;
+    --bg-panel: #161c2c;
+    --bg-card: #1c2438;
+    --bg-card-hover: #232d45;
+    --bg-input: #0e131f;
+    --border-color: #28324a;
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+    --accent-blue: #008cc1;
+    --accent-blue-hover: #00a3e0;
+    --accent-green: #10b981;
+    --accent-green-hover: #059669;
+    --accent-red: #ef4444;
+    --accent-yellow: #f59e0b;
+    --accent-purple: #8b5cf6;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-app);
+    color: var(--text-main);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  .app-view {
+    display: none;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  .app-view.active {
+    display: flex;
+  }
+
+  .desktop-sidebar {
+    width: 240px;
+    background-color: var(--bg-sidebar);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+
+  .brand-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .brand-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #008cc1, #10b981);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 16px;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(0, 140, 193, 0.3);
+  }
+
+  .brand-title {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+
+  .brand-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: block;
+  }
+
+  .nav-menu {
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+  }
+
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+  }
+
+  .nav-btn:hover {
+    background-color: var(--bg-card);
+    color: var(--text-main);
+  }
+
+  .nav-btn.active {
+    background-color: rgba(0, 140, 193, 0.15);
+    color: #38bdf8;
+    border-left: 3px solid var(--accent-blue);
+    font-weight: 600;
+  }
+
+  .sidebar-footer {
+    padding: 16px;
+    border-top: 1px solid var(--border-color);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .desktop-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background-color: var(--bg-app);
+  }
+
+  .topbar {
+    height: 60px;
+    background-color: var(--bg-panel);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .topbar-breadcrumb {
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
+  .topbar-breadcrumb span {
+    color: var(--text-main);
+    font-weight: 600;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #64748b;
+  }
+
+  .status-indicator.active {
+    background-color: var(--accent-green);
+    box-shadow: 0 0 8px var(--accent-green);
+  }
+
+  .status-indicator.starting {
+    background-color: var(--accent-yellow);
+    box-shadow: 0 0 8px var(--accent-yellow);
+  }
+
+  .section-container {
+    display: none;
+    flex: 1;
+    padding: 28px;
+    overflow-y: auto;
+  }
+
+  .section-container.active {
+    display: block;
+  }
+
+  .section-header {
+    margin-bottom: 24px;
+  }
+
+  .section-header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .section-header p {
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
+  .projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 32px;
+  }
+
+  .project-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+
+  .project-card:hover {
+    background-color: var(--bg-card-hover);
+    transform: translateY(-2px);
+  }
+
+  .project-card.selected {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 1px var(--accent-blue), 0 8px 20px rgba(0, 140, 193, 0.15);
+  }
+
+  .project-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    background-color: rgba(0, 140, 193, 0.15);
+    color: #38bdf8;
+    margin-bottom: 12px;
+  }
+
+  .project-card h3 {
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+
+  .project-card p {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+
+  .project-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-color);
+    padding-top: 12px;
+  }
+
+  .dbms-split {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 24px;
+    height: calc(100vh - 170px);
+    min-height: 460px;
+  }
+
+  .dbms-instance-card {
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .db-badge-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .db-state-badge {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    background-color: rgba(100, 116, 139, 0.2);
+    color: #94a3b8;
+  }
+
+  .db-state-badge.active {
+    background-color: rgba(16, 185, 129, 0.18);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+  }
+
+  .db-state-badge.starting {
+    background-color: rgba(245, 158, 11, 0.18);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+  }
+
+  .db-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .db-uri {
+    font-family: monospace;
+    font-size: 13px;
+    color: #38bdf8;
+    background-color: var(--bg-input);
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    display: inline-block;
+    margin-bottom: 20px;
+  }
+
+  .db-info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+    font-size: 13px;
+  }
+
+  .db-info-row {
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(40, 50, 74, 0.6);
+  }
+
+  .db-info-row span:first-child {
+    color: var(--text-muted);
+  }
+
+  .db-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 11px 16px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .btn-start {
+    background-color: var(--accent-green);
+    color: #fff;
+  }
+
+  .btn-start:hover:not(:disabled) {
+    background-color: var(--accent-green-hover);
+  }
+
+  .btn-stop {
+    background-color: var(--bg-card);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .btn-stop:hover:not(:disabled) {
+    background-color: rgba(239, 68, 68, 0.15);
+  }
+
+  .btn-open {
+    background-color: var(--accent-blue);
+    color: #fff;
+    width: 100%;
+  }
+
+  .btn-open:hover {
+    background-color: var(--accent-blue-hover);
+  }
+
+  .dbms-inspector {
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .inspector-tabs {
+    display: flex;
+    background-color: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 16px;
+  }
+
+  .tab-btn {
+    padding: 14px 20px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .tab-btn:hover {
+    color: var(--text-main);
+  }
+
+  .tab-btn.active {
+    color: #38bdf8;
+    border-bottom-color: var(--accent-blue);
+  }
+
+  .tab-content {
+    display: none;
+    padding: 24px;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .tab-content.active {
+    display: block;
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .metric-box {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  .metric-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .metric-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+
+  .metric-bar-bg {
+    height: 6px;
+    background-color: var(--bg-input);
+    border-radius: 3px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+
+  .metric-bar-fill {
+    height: 100%;
+    background-color: var(--accent-blue);
+    width: 0%;
+    transition: width 0.5s ease;
+  }
+
+  .detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .detail-table td {
+    padding: 12px 8px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .detail-table td:first-child {
+    color: var(--text-muted);
+    width: 40%;
+  }
+
+  .detail-table td:last-child {
+    font-family: monospace;
+    color: var(--text-main);
+  }
+
+  .plugin-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+
+  .plugin-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .plugin-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .plugin-installed-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background-color: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    display: none;
+  }
+
+  .plugin-installed-tag.visible {
+    display: inline-block;
+  }
+
+  .plugin-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  .btn-plugin {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--accent-blue);
+    background-color: rgba(0, 140, 193, 0.15);
+    color: #38bdf8;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .btn-plugin:hover {
+    background-color: var(--accent-blue);
+    color: #fff;
+  }
+
+  .btn-plugin.installed {
+    border-color: rgba(239, 68, 68, 0.4);
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+  }
+
+  .btn-plugin.installed:hover {
+    background-color: var(--accent-red);
+    color: #fff;
+  }
+
+  .plugin-progress {
+    height: 4px;
+    background-color: var(--bg-input);
+    border-radius: 2px;
+    margin-top: 12px;
+    overflow: hidden;
+    display: none;
+  }
+
+  .plugin-progress.active {
+    display: block;
+  }
+
+  .plugin-progress-fill {
+    height: 100%;
+    width: 0%;
+    background-color: var(--accent-green);
+    transition: width 0.2s linear;
+  }
+
+  .conf-editor {
+    width: 100%;
+    height: 300px;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    color: #a5b4fc;
+    font-family: 'Fira Code', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    resize: none;
+    outline: none;
+  }
+
+  .log-console {
+    background-color: #07090e;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    height: 310px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .log-line {
+    margin-bottom: 4px;
+  }
+
+  .log-time {
+    color: #64748b;
+  }
+
+  .log-info {
+    color: #38bdf8;
+  }
+
+  .log-ok {
+    color: #34d399;
+  }
+
+  .log-warn {
+    color: #fbbf24;
+  }
+
+  .apps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+  }
+
+  .app-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .app-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 16px;
+  }
+
+  .browser-view {
+    flex-direction: column;
+    background-color: #0d111a;
+  }
+
+  .browser-topbar {
+    height: 54px;
+    background-color: #131826;
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .browser-left-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .browser-badge {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: monospace;
+  }
+
+  .btn-back-desktop {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-back-desktop:hover {
+    background-color: var(--bg-card-hover);
+    border-color: var(--accent-blue);
+  }
+
+  .cypher-bar {
+    background-color: #161d2e;
+    border-bottom: 1px solid var(--border-color);
+    padding: 14px 20px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .cypher-prompt {
+    font-family: monospace;
+    font-weight: 700;
+    color: var(--accent-green);
+    font-size: 15px;
+  }
+
+  .cypher-select {
+    background-color: var(--bg-input);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    outline: none;
+    cursor: pointer;
+    min-width: 280px;
+  }
+
+  .cypher-code-box {
+    flex: 1;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: 'Fira Code', monospace;
+    font-size: 13px;
+    color: #38bdf8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .btn-play {
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 14px rgba(0, 140, 193, 0.35);
+    transition: transform 0.15s ease;
+  }
+
+  .btn-play:hover {
+    transform: scale(1.03);
+  }
+
+  .browser-workspace {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .canvas-wrapper {
+    flex: 1;
+    position: relative;
+    background-color: #0b0e14;
+    background-image: radial-gradient(#1e293b 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+
+  canvas:active {
+    cursor: grabbing;
+  }
+
+  .canvas-legend {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background-color: rgba(22, 28, 44, 0.9);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    gap: 14px;
+    font-size: 12px;
+    backdrop-filter: blur(6px);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  .browser-inspector {
+    width: 320px;
+    background-color: var(--bg-panel);
+    border-left: 1px solid var(--border-color);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .inspector-header {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    font-weight: 700;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 16px;
+  }
+
+  .prop-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+
+  .prop-row {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+  }
+
+  .prop-key {
+    color: var(--text-muted);
+    font-family: monospace;
+  }
+
+  .prop-val {
+    color: var(--text-main);
+    font-weight: 600;
+  }
+
+  .toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .toast {
+    background-color: var(--bg-panel);
+    border-left: 4px solid var(--accent-yellow);
+    border-top: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 14px 18px;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    font-size: 13px;
+    max-width: 360px;
+    animation: slideIn 0.25s ease;
+  }
+
+  .toast.info {
+    border-left-color: var(--accent-blue);
+  }
+
+  .toast.success {
+    border-left-color: var(--accent-green);
+  }
+
+  @keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div id="view-desktop" class="app-view active">
+  <aside class="desktop-sidebar">
+    <div class="brand-header">
+      <div class="brand-logo">N4J</div>
+      <div>
+        <div class="brand-title">Neo4j Desktop</div>
+        <span class="brand-sub">v1.6.1 Enterprise</span>
+      </div>
+    </div>
+    <nav class="nav-menu">
+      <button class="nav-btn active" data-section="projects">Proyectos</button>
+      <button class="nav-btn" data-section="dbms">DBMSs</button>
+      <button class="nav-btn" data-section="apps">Graph Apps</button>
+    </nav>
+    <div class="sidebar-footer">
+      Entorno Local: localhost<br>
+      Motor: Neo4j 5.24.0
+    </div>
+  </aside>
+
+  <main class="desktop-main">
+    <header class="topbar">
+      <div class="topbar-breadcrumb" id="breadcrumb-text">Proyecto Activo: <span>Proyecto_Neo4j_Clase</span></div>
+      <div class="status-pill">
+        <div class="status-indicator" id="top-status-dot"></div>
+        <span id="top-status-label">DBMS: STOPPED</span>
+      </div>
+    </header>
+
+    <section id="sec-projects" class="section-container active">
+      <div class="section-header">
+        <h1>Proyectos Locales</h1>
+        <p>Selecciona un proyecto para gestionar sus instancias de bases de datos asociadas.</p>
+      </div>
+
+      <div class="projects-grid">
+        <div class="project-card selected" data-project="Proyecto_Neo4j_Clase" data-db="Base_Datos_Neo4j_Grupo">
+          <span class="project-badge">ACTIVO EN SESIÓN</span>
+          <h3>Proyecto_Neo4j_Clase</h3>
+          <p>Entorno principal para la demostración académica de grafos, consultas Cypher y análisis de relaciones.</p>
+          <div class="project-meta">
+            <span>1 DBMS asociado</span>
+            <span>Neo4j 5.24.0</span>
+          </div>
+        </div>
+
+        <div class="project-card" data-project="Red_Social_Grafos" data-db="Grafo_Usuarios_Prod">
+          <span class="project-badge" style="background: rgba(139,92,246,0.15); color: #c4b5fd;">SECUNDARIO</span>
+          <h3>Red_Social_Grafos</h3>
+          <p>Modelo de recomendaciones de amistad y compras en tiempo real mediante algoritmos de caminos cortos.</p>
+          <div class="project-meta">
+            <span>1 DBMS asociado</span>
+            <span>Neo4j 5.24.0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">
+        <h1>Base de Datos del Proyecto Seleccionado</h1>
+        <p>Haz clic en gestionar para controlar el servidor o iniciar Neo4j Browser.</p>
+      </div>
+
+      <div class="plugin-card" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div class="plugin-title" id="proj-db-name">Base_Datos_Neo4j_Grupo</div>
+          <div class="plugin-desc">Puerto Bolt: bolt://localhost:7687 &bull; Versión: Neo4j 5.24.0</div>
+        </div>
+        <button class="btn btn-open" style="width:auto; padding: 10px 20px;" id="btn-go-dbms">Gestionar DBMS</button>
+      </div>
+    </section>
+
+    <section id="sec-dbms" class="section-container">
+      <div class="section-header">
+        <h1>Gestión de Instancia DBMS</h1>
+        <p>Controla el ciclo de vida del servidor local, extensiones y registros del sistema.</p>
+      </div>
+
+      <div class="dbms-split">
+        <div class="dbms-instance-card">
+          <div>
+            <div class="db-badge-row">
+              <span style="font-size:12px; color:var(--text-muted); font-weight:600;">INSTANCIA LOCAL</span>
+              <span class="db-state-badge" id="db-state-badge">STOPPED</span>
+            </div>
+            <div class="db-title" id="dbms-instance-title">Base_Datos_Neo4j_Grupo</div>
+            <div class="db-uri">bolt://localhost:7687</div>
+
+            <div class="db-info-list">
+              <div class="db-info-row">
+                <span>Versión del Motor</span>
+                <span>Neo4j 5.24.0</span>
+              </div>
+              <div class="db-info-row">
+                <span>Puerto HTTP</span>
+                <span>7474</span>
+              </div>
+              <div class="db-info-row">
+                <span>Usuario Admin</span>
+                <span>neo4j</span>
+              </div>
+              <div class="db-info-row">
+                <span>Plugins Activos</span>
+                <span id="sidebar-plugins-count">0 instalados</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="db-controls">
+            <div class="btn-row">
+              <button class="btn btn-start" id="btn-db-start">Start</button>
+              <button class="btn btn-stop" id="btn-db-stop" disabled>Stop</button>
+            </div>
+            <button class="btn btn-open" id="btn-db-open">Open with Neo4j Browser</button>
+          </div>
+        </div>
+
+        <div class="dbms-inspector">
+          <div class="inspector-tabs">
+            <button class="tab-btn active" data-tab="details">Details</button>
+            <button class="tab-btn" data-tab="plugins">Plugins</button>
+            <button class="tab-btn" data-tab="settings">Settings</button>
+            <button class="tab-btn" data-tab="logs">Logs</button>
+          </div>
+
+          <div id="tab-details" class="tab-content active">
+            <div class="metrics-grid">
+              <div class="metric-box">
+                <div class="metric-label">Uso de Memoria Heap (RAM)</div>
+                <div class="metric-value" id="metric-ram">0 MB / 2048 MB</div>
+                <div class="metric-bar-bg"><div class="metric-bar-fill" id="bar-ram"></div></div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">Carga de CPU del Motor</div>
+                <div class="metric-value" id="metric-cpu">0.0 %</div>
+                <div class="metric-bar-bg"><div class="metric-bar-fill" id="bar-cpu" style="background-color: var(--accent-green);"></div></div>
+              </div>
+            </div>
+
+            <table class="detail-table">
+              <tr><td>Usuario Administrador</td><td>neo4j</td></tr>
+              <tr><td>Dirección Bolt</td><td>bolt://localhost:7687</td></tr>
+              <tr><td>Puerto HTTP Web</td><td>http://localhost:7474</td></tr>
+              <tr><td>Directorio de Datos</td><td>/var/lib/neo4j/data/databases/neo4j</td></tr>
+              <tr><td>Almacenamiento en Disco</td><td>142.8 MB</td></tr>
+            </table>
+          </div>
+
+          <div id="tab-plugins" class="tab-content">
+            <div class="plugin-card">
+              <div class="plugin-top">
+                <div>
+                  <div class="plugin-title">
+                    APOC (Awesome Procedures on Cypher)
+                    <span class="plugin-installed-tag" id="tag-apoc">Instalado</span>
+                  </div>
+                  <div class="plugin-desc">Biblioteca estándar con más de 450 procedimientos para integración de datos, importación JSON/CSV y utilidades avanzadas de grafos.</div>
+                </div>
+                <button class="btn-plugin" id="btn-plugin-apoc">Instalar</button>
+              </div>
+              <div class="plugin-progress" id="prog-apoc">
+                <div class="plugin-progress-fill" id="fill-apoc"></div>
+              </div>
+            </div>
+
+            <div class="plugin-card">
+              <div class="plugin-top">
+                <div>
+                  <div class="plugin-title">
+                    Graph Data Science (GDS)
+                    <span class="plugin-installed-tag" id="tag-gds">Instalado</span>
+                  </div>
+                  <div class="plugin-desc">Motor analítico con algoritmos de centralidad (PageRank), detección de comunidades (Louvain) y aprendizaje automático sobre grafos.</div>
+                </div>
+                <button class="btn-plugin" id="btn-plugin-gds">Instalar</button>
+              </div>
+              <div class="plugin-progress" id="prog-gds">
+                <div class="plugin-progress-fill" id="fill-gds"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="tab-settings" class="tab-content">
+            <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">Archivo de configuración activa: <strong>neo4j.conf</strong></p>
+            <textarea class="conf-editor" id="conf-textarea" readonly>server.default_listen_address=0.0.0.0
+server.bolt.enabled=true
+server.bolt.listen_address=:7687
+server.http.enabled=true
+server.http.listen_address=:7474
+server.memory.heap.initial_size=1G
+server.memory.heap.max_size=2G
+server.memory.pagecache.size=512M
+dbms.security.auth_enabled=true
+dbms.security.procedures.unrestricted=jwt.security.*</textarea>
+          </div>
+
+          <div id="tab-logs" class="tab-content">
+            <div class="log-console" id="log-console"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-apps" class="section-container">
+      <div class="section-header">
+        <h1>Graph Apps del Ecosistema</h1>
+        <p>Herramientas visuales conectadas a tu instancia local de Neo4j.</p>
+      </div>
+
+      <div class="apps-grid">
+        <div class="app-card">
+          <div>
+            <div class="app-icon" style="background: rgba(0,140,193,0.2); color: #38bdf8;">&gt;_</div>
+            <h3 style="margin-bottom:8px;">Neo4j Browser</h3>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin-bottom:20px;">Interfaz web interactiva para desarrolladores. Permite ejecutar consultas en lenguaje Cypher y visualizar nodos y relaciones en tiempo real.</p>
+          </div>
+          <button class="btn btn-open" id="btn-launch-browser-app">Abrir Neo4j Browser</button>
+        </div>
+
+        <div class="app-card">
+          <div>
+            <div class="app-icon" style="background: rgba(16,185,129,0.2); color: #34d399;">❖</div>
+            <h3 style="margin-bottom:8px;">Neo4j Bloom</h3>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin-bottom:20px;">Exploración visual sin código diseñada para analistas de negocio. Permite buscar patrones mediante lenguaje natural sin escribir Cypher.</p>
+          </div>
+          <button class="btn" style="background-color: var(--bg-panel); color: var(--text-muted); border: 1px solid var(--border-color);" id="btn-bloom-info">Explorar con Bloom</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="view-browser" class="app-view browser-view">
+  <header class="browser-topbar">
+    <div class="browser-left-info">
+      <div class="brand-logo" style="width:28px; height:28px; font-size:13px;">N4J</div>
+      <strong>Neo4j Browser</strong>
+      <span class="browser-badge" id="browser-conn-badge">Conectado: bolt://localhost:7687</span>
+    </div>
+    <button class="btn-back-desktop" id="btn-return-desktop">Volver a Neo4j Desktop</button>
+  </header>
+
+  <div class="cypher-bar">
+    <span class="cypher-prompt">neo4j$</span>
+    <select class="cypher-select" id="cypher-preset">
+      <option value="0">1. Crear y mostrar Nodos (Usuarios)</option>
+      <option value="1">2. Conectar Relaciones (Amigos y Compras)</option>
+      <option value="2">3. Recomendaciones en Tiempo Real</option>
+    </select>
+    <div class="cypher-code-box" id="cypher-display">MATCH (u:Usuario) RETURN u</div>
+    <button class="btn-play" id="btn-run-cypher">PLAY ▶</button>
+  </div>
+
+  <div class="browser-workspace">
+    <div class="canvas-wrapper" id="canvas-wrapper">
+      <div class="canvas-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#008cc1;"></div><span>Usuario</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#10b981;"></div><span>Producto</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div><span>Recomendado</span></div>
+      </div>
+      <canvas id="graph-canvas"></canvas>
+    </div>
+
+    <aside class="browser-inspector">
+      <div class="inspector-header">Inspector de Propiedades</div>
+      <div id="inspector-body">
+        <p style="font-size:13px; color:var(--text-muted); line-height:1.5;">Haz clic sobre cualquier <strong>nodo</strong> o <strong>relación</strong> en el lienzo central para inspeccionar sus etiquetas, propiedades internas e identificador.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+  const state = {
+    activeProject: 'Proyecto_Neo4j_Clase',
+    activeDb: 'Base_Datos_Neo4j_Grupo',
+    dbStatus: 'STOPPED',
+    plugins: {
+      apoc: false,
+      gds: false
+    },
+    metricsTimer: null
+  };
+
+  const presets = [
+    {
+      query: 'MATCH (u:Usuario) RETURN u',
+      nodes: [
+        { id: 1, label: 'Ana', group: 'Usuario', color: '#008cc1', props: { id: 'USR-01', nombre: 'Ana García', ciudad: 'Madrid', rol: 'Ingeniera Datos' } },
+        { id: 2, label: 'Carlos', group: 'Usuario', color: '#008cc1', props: { id: 'USR-02', nombre: 'Carlos Ruiz', ciudad: 'Barcelona', rol: 'Desarrollador' } },
+        { id: 3, label: 'Elena', group: 'Usuario', color: '#008cc1', props: { id: 'USR-03', nombre: 'Elena Gómez', ciudad: 'Badajoz', rol: 'Analista BI' } },
+        { id: 4, label: 'David', group: 'Usuario', color: '#008cc1', props: { id: 'USR-04', nombre: 'David Torres', ciudad: 'Sevilla', rol: 'Arquitecto Cloud' } }
+      ],
+      edges: []
+    },
+    {
+      query: 'MATCH (u:Usuario)-[r:AMIGO_DE|COMPRO]->(n) RETURN u, r, n',
+      nodes: [
+        { id: 1, label: 'Ana', group: 'Usuario', color: '#008cc1', props: { id: 'USR-01', nombre: 'Ana García', ciudad: 'Madrid', rol: 'Ingeniera Datos' } },
+        { id: 2, label: 'Carlos', group: 'Usuario', color: '#008cc1', props: { id: 'USR-02', nombre: 'Carlos Ruiz', ciudad: 'Barcelona', rol: 'Desarrollador' } },
+        { id: 3, label: 'Elena', group: 'Usuario', color: '#008cc1', props: { id: 'USR-03', nombre: 'Elena Gómez', ciudad: 'Badajoz', rol: 'Analista BI' } },
+        { id: 4, label: 'David', group: 'Usuario', color: '#008cc1', props: { id: 'USR-04', nombre: 'David Torres', ciudad: 'Sevilla', rol: 'Arquitecto Cloud' } },
+        { id: 10, label: 'Portátil Pro', group: 'Producto', color: '#10b981', props: { id: 'PRD-10', nombre: 'Portátil Pro 16"', categoria: 'Hardware', precio: '1499 €' } },
+        { id: 11, label: 'Libro Grafos', group: 'Producto', color: '#10b981', props: { id: 'PRD-11', nombre: 'Graph Databases', categoria: 'Libros', precio: '45 €' } }
+      ],
+      edges: [
+        { id: 'e1', from: 1, to: 2, label: 'AMIGO_DE', props: { desde: '2022', afinidad: '94%' } },
+        { id: 'e2', from: 2, to: 3, label: 'AMIGO_DE', props: { desde: '2023', afinidad: '88%' } },
+        { id: 'e3', from: 1, to: 4, label: 'AMIGO_DE', props: { desde: '2021', afinidad: '91%' } },
+        { id: 'e4', from: 1, to: 10, label: 'COMPRO', props: { fecha: '2026-10-12', valoracion: '5/5' } },
+        { id: 'e5', from: 2, to: 11, label: 'COMPRO', props: { fecha: '2026-11-02', valoracion: '5/5' } },
+        { id: 'e6', from: 3, to: 11, label: 'COMPRO', props: { fecha: '2026-11-05', valoracion: '4/5' } }
+      ]
+    },
+    {
+      query: 'MATCH (u:Usuario {nombre:"Ana García"})-[:AMIGO_DE]->(amigo)-[:COMPRO]->(rec:Producto) RETURN u, amigo, rec',
+      nodes: [
+        { id: 1, label: 'Ana', group: 'Usuario', color: '#008cc1', props: { id: 'USR-01', nombre: 'Ana García', ciudad: 'Madrid', rol: 'Ingeniera Datos' } },
+        { id: 2, label: 'Carlos', group: 'Usuario', color: '#008cc1', props: { id: 'USR-02', nombre: 'Carlos Ruiz', ciudad: 'Barcelona', rol: 'Desarrollador' } },
+        { id: 3, label: 'Elena', group: 'Usuario', color: '#008cc1', props: { id: 'USR-03', nombre: 'Elena Gómez', ciudad: 'Badajoz', rol: 'Analista BI' } },
+        { id: 10, label: 'Portátil Pro', group: 'Producto', color: '#10b981', props: { id: 'PRD-10', nombre: 'Portátil Pro 16"', categoria: 'Hardware', precio: '1499 €' } },
+        { id: 11, label: 'Libro Grafos', group: 'Producto', color: '#f59e0b', props: { id: 'PRD-11', nombre: 'Graph Databases', categoria: 'Recomendación Top', precio: '45 €' } },
+        { id: 12, label: 'Monitor 4K', group: 'Producto', color: '#f59e0b', props: { id: 'PRD-12', nombre: 'Monitor UltraSharp 4K', categoria: 'Recomendación Top', precio: '420 €' } }
+      ],
+      edges: [
+        { id: 'e1', from: 1, to: 2, label: 'AMIGO_DE', props: { desde: '2022', peso: 0.94 } },
+        { id: 'e2', from: 2, to: 3, label: 'AMIGO_DE', props: { desde: '2023', peso: 0.88 } },
+        { id: 'e4', from: 1, to: 10, label: 'COMPRO', props: { fecha: '2026-10-12' } },
+        { id: 'e5', from: 2, to: 11, label: 'COMPRO', props: { fecha: '2026-11-02' } },
+        { id: 'e7', from: 3, to: 12, label: 'COMPRO', props: { fecha: '2026-11-08' } },
+        { id: 'e8', from: 1, to: 11, label: 'RECOMENDADO', props: { score: '0.96', algoritmo: 'Collaborative Filtering' } },
+        { id: 'e9', from: 1, to: 12, label: 'RECOMENDADO', props: { score: '0.84', algoritmo: '2nd-Degree Path' } }
+      ]
+    }
+  ];
+
+  function showToast(message, type = 'warn') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(function() {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.3s ease';
+      setTimeout(function() {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, 3500);
+  }
+
+  function appendLog(level, message) {
+    const consoleEl = document.getElementById('log-console');
+    const now = new Date();
+    const ts = now.toISOString().replace('T', ' ').substring(0, 19);
+    const line = document.createElement('div');
+    line.className = 'log-line';
+    let levelClass = 'log-info';
+    if (level === 'SUCCESS') levelClass = 'log-ok';
+    if (level === 'WARN') levelClass = 'log-warn';
+    line.innerHTML = '<span class="log-time">[' + ts + ']</span> <span class="' + levelClass + '">' + level + '</span> ' + message;
+    consoleEl.appendChild(line);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+
+  appendLog('INFO', 'Neo4j Desktop inicializado. Instancia "' + state.activeDb + '" en espera.');
+
+  const navBtns = document.querySelectorAll('.nav-btn');
+  const sections = document.querySelectorAll('.section-container');
+
+  function switchDesktopSection(sectionName) {
+    navBtns.forEach(function(b) {
+      b.classList.toggle('active', b.getAttribute('data-section') === sectionName);
+    });
+    sections.forEach(function(s) {
+      s.classList.toggle('active', s.id === 'sec-' + sectionName);
+    });
+  }
+
+  navBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      switchDesktopSection(btn.getAttribute('data-section'));
+    });
+  });
+
+  document.getElementById('btn-go-dbms').addEventListener('click', function() {
+    switchDesktopSection('dbms');
+  });
+
+  const projectCards = document.querySelectorAll('.project-card');
+  projectCards.forEach(function(card) {
+    card.addEventListener('click', function() {
+      projectCards.forEach(function(c) { c.classList.remove('selected'); });
+      card.classList.add('selected');
+      state.activeProject = card.getAttribute('data-project');
+      state.activeDb = card.getAttribute('data-db');
+      document.getElementById('breadcrumb-text').innerHTML = 'Proyecto Activo: <span>' + state.activeProject + '</span>';
+      document.getElementById('proj-db-name').textContent = state.activeDb;
+      document.getElementById('dbms-instance-title').textContent = state.activeDb;
+      appendLog('INFO', 'Proyecto cambiado a "' + state.activeProject + '" (DBMS: ' + state.activeDb + ').');
+    });
+  });
+
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
+
+  tabBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const target = btn.getAttribute('data-tab');
+      tabBtns.forEach(function(b) { b.classList.remove('active'); });
+      tabContents.forEach(function(c) { c.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('tab-' + target).classList.add('active');
+    });
+  });
+
+  function updateMetrics(active) {
+    const ramText = document.getElementById('metric-ram');
+    const barRam = document.getElementById('bar-ram');
+    const cpuText = document.getElementById('metric-cpu');
+    const barCpu = document.getElementById('bar-cpu');
+
+    if (!active) {
+      if (state.metricsTimer) clearInterval(state.metricsTimer);
+      ramText.textContent = '0 MB / 2048 MB';
+      barRam.style.width = '0%';
+      cpuText.textContent = '0.0 %';
+      barCpu.style.width = '0%';
+      return;
+    }
+
+    function tick() {
+      const ram = Math.floor(680 + Math.random() * 140);
+      const cpu = (2.1 + Math.random() * 4.5).toFixed(1);
+      ramText.textContent = ram + ' MB / 2048 MB';
+      barRam.style.width = Math.round((ram / 2048) * 100) + '%';
+      cpuText.textContent = cpu + ' %';
+      barCpu.style.width = Math.min(100, Math.round(parseFloat(cpu) * 5)) + '%';
+    }
+    tick();
+    state.metricsTimer = setInterval(tick, 2000);
+  }
+
+  function syncStatusUI() {
+    const badge = document.getElementById('db-state-badge');
+    const topDot = document.getElementById('top-status-dot');
+    const topLabel = document.getElementById('top-status-label');
+    const btnStart = document.getElementById('btn-db-start');
+    const btnStop = document.getElementById('btn-db-stop');
+
+    badge.className = 'db-state-badge';
+    topDot.className = 'status-indicator';
+
+    if (state.dbStatus === 'STOPPED') {
+      badge.textContent = 'STOPPED';
+      topLabel.textContent = 'DBMS: STOPPED';
+      btnStart.disabled = false;
+      btnStop.disabled = true;
+      updateMetrics(false);
+    } else if (state.dbStatus === 'STARTING') {
+      badge.textContent = 'STARTING...';
+      badge.classList.add('starting');
+      topDot.classList.add('starting');
+      topLabel.textContent = 'DBMS: STARTING';
+      btnStart.disabled = true;
+      btnStop.disabled = true;
+    } else if (state.dbStatus === 'ACTIVE') {
+      badge.textContent = 'ACTIVE';
+      badge.classList.add('active');
+      topDot.classList.add('active');
+      topLabel.textContent = 'DBMS: ACTIVE';
+      btnStart.disabled = true;
+      btnStop.disabled = false;
+      updateMetrics(true);
+    }
+  }
+
+  document.getElementById('btn-db-start').addEventListener('click', function() {
+    if (state.dbStatus !== 'STOPPED') return;
+    state.dbStatus = 'STARTING';
+    syncStatusUI();
+    appendLog('INFO', 'Iniciando instancia "' + state.activeDb + '" (Neo4j 5.24.0)...');
+    appendLog('INFO', 'Asignando memoria JVM Heap: 1024MB inicial / 2048MB máximo.');
+
+    setTimeout(function() {
+      state.dbStatus = 'ACTIVE';
+      syncStatusUI();
+      appendLog('SUCCESS', 'Servidor Bolt escuchando en bolt://localhost:7687');
+      appendLog('SUCCESS', 'Interfaz HTTP disponible en http://localhost:7474 - Estado: ACTIVE');
+      showToast('Servidor Neo4j iniciado correctamente.', 'success');
+    }, 1500);
+  });
+
+  document.getElementById('btn-db-stop').addEventListener('click', function() {
+    if (state.dbStatus !== 'ACTIVE') return;
+    state.dbStatus = 'STOPPED';
+    syncStatusUI();
+    appendLog('WARN', 'Deteniendo instancia "' + state.activeDb + '"...');
+    appendLog('INFO', 'Base de datos detenida limpiamente. Estado: STOPPED.');
+    showToast('Instancia DBMS detenida.', 'info');
+  });
+
+  function updateConfigFile() {
+    const lines = [
+      'server.default_listen_address=0.0.0.0',
+      'server.bolt.enabled=true',
+      'server.bolt.listen_address=:7687',
+      'server.http.enabled=true',
+      'server.http.listen_address=:7474',
+      'server.memory.heap.initial_size=1G',
+      'server.memory.heap.max_size=2G',
+      'server.memory.pagecache.size=512M',
+      'dbms.security.auth_enabled=true'
+    ];
+    const unrestricted = ['jwt.security.*'];
+    if (state.plugins.apoc) unrestricted.push('apoc.*');
+    if (state.plugins.gds) unrestricted.push('gds.*');
+    lines.push('dbms.security.procedures.unrestricted=' + unrestricted.join(','));
+    document.getElementById('conf-textarea').value = lines.join('\n');
+
+    let count = 0;
+    if (state.plugins.apoc) count++;
+    if (state.plugins.gds) count++;
+    document.getElementById('sidebar-plugins-count').textContent = count + ' instalados';
+  }
+
+  function setupPluginButton(key, fullName) {
+    const btn = document.getElementById('btn-plugin-' + key);
+    const prog = document.getElementById('prog-' + key);
+    const fill = document.getElementById('fill-' + key);
+    const tag = document.getElementById('tag-' + key);
+
+    btn.addEventListener('click', function() {
+      if (state.plugins[key]) {
+        state.plugins[key] = false;
+        btn.textContent = 'Instalar';
+        btn.classList.remove('installed');
+        tag.classList.remove('visible');
+        updateConfigFile();
+        appendLog('WARN', 'Plugin desinstalado: ' + fullName);
+        showToast('Plugin ' + fullName + ' desinstalado.', 'info');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Instalando...';
+      prog.classList.add('active');
+      fill.style.width = '10%';
+      appendLog('INFO', 'Descargando paquete ' + fullName + '...');
+
+      setTimeout(function() { fill.style.width = '55%'; }, 300);
+      setTimeout(function() { fill.style.width = '90%'; }, 650);
+      setTimeout(function() {
+        fill.style.width = '100%';
+        prog.classList.remove('active');
+        fill.style.width = '0%';
+        btn.disabled = false;
+        btn.textContent = 'Desinstalar';
+        btn.classList.add('installed');
+        tag.classList.add('visible');
+        state.plugins[key] = true;
+        updateConfigFile();
+        appendLog('SUCCESS', 'Plugin ' + fullName + ' instalado y registrado en neo4j.conf');
+        showToast('Plugin ' + fullName + ' instalado correctamente.', 'success');
+      }, 1000);
+    });
+  }
+
+  setupPluginButton('apoc', 'APOC 5.24.0');
+  setupPluginButton('gds', 'Graph Data Science 2.12');
+
+  function openNeo4jBrowser() {
+    if (state.dbStatus !== 'ACTIVE') {
+      showToast('Aviso: Primero debes iniciar el servidor DBMS (botón Start) antes de abrir Neo4j Browser.', 'warn');
+      switchDesktopSection('dbms');
+      return;
+    }
+    document.getElementById('view-desktop').classList.remove('active');
+    document.getElementById('view-browser').classList.add('active');
+    document.getElementById('browser-conn-badge').textContent = 'Conectado: ' + state.activeDb + ' (bolt://localhost:7687)';
+    resizeCanvas();
+    loadPreset(parseInt(document.getElementById('cypher-preset').value, 10));
+  }
+
+  document.getElementById('btn-db-open').addEventListener('click', openNeo4jBrowser);
+  document.getElementById('btn-launch-browser-app').addEventListener('click', openNeo4jBrowser);
+
+  document.getElementById('btn-bloom-info').addEventListener('click', function() {
+    showToast('Neo4j Bloom requiere licencia Enterprise activa para exploración sin código.', 'info');
+  });
+
+  document.getElementById('btn-return-desktop').addEventListener('click', function() {
+    document.getElementById('view-browser').classList.remove('active');
+    document.getElementById('view-desktop').classList.add('active');
+  });
+
+  const canvas = document.getElementById('graph-canvas');
+  const ctx = canvas.getContext('2d');
+  let simNodes = [];
+  let simEdges = [];
+  let draggedNode = null;
+  let selectedItem = null;
+  let animationId = null;
+
+  function resizeCanvas() {
+    const wrapper = document.getElementById('canvas-wrapper');
+    canvas.width = wrapper.clientWidth;
+    canvas.height = wrapper.clientHeight;
+  }
+
+  window.addEventListener('resize', resizeCanvas);
+
+  function loadPreset(index) {
+    const preset = presets[index];
+    document.getElementById('cypher-display').textContent = preset.query;
+    const cx = canvas.width / 2 || 400;
+    const cy = canvas.height / 2 || 300;
+
+    simNodes = preset.nodes.map(function(n, idx) {
+      const angle = (idx / preset.nodes.length) * Math.PI * 2;
+      return {
+        id: n.id,
+        label: n.label,
+        group: n.group,
+        color: n.color,
+        props: n.props,
+        x: cx + Math.cos(angle) * 140,
+        y: cy + Math.sin(angle) * 140,
+        vx: 0,
+        vy: 0,
+        radius: 30
+      };
+    });
+
+    simEdges = preset.edges.map(function(e) {
+      return {
+        id: e.id,
+        from: e.from,
+        to: e.to,
+        label: e.label,
+        props: e.props
+      };
+    });
+
+    selectedItem = null;
+    renderInspector(null);
+  }
+
+  document.getElementById('cypher-preset').addEventListener('change', function(e) {
+    const idx = parseInt(e.target.value, 10);
+    document.getElementById('cypher-display').textContent = presets[idx].query;
+  });
+
+  document.getElementById('btn-run-cypher').addEventListener('click', function() {
+    const idx = parseInt(document.getElementById('cypher-preset').value, 10);
+    loadPreset(idx);
+    showToast('Consulta Cypher ejecutada en 12 ms.', 'success');
+  });
+
+  function renderInspector(item) {
+    const body = document.getElementById('inspector-body');
+    if (!item) {
+      body.innerHTML = '<p style="font-size:13px; color:var(--text-muted); line-height:1.5;">Haz clic sobre cualquier <strong>nodo</strong> o <strong>relación</strong> en el lienzo central para inspeccionar sus etiquetas, propiedades internas e identificador.</p>';
+      return;
+    }
+
+    let html = '';
+    if (item.type === 'node') {
+      html += '<span class="prop-badge" style="background:' + item.data.color + '33; color:' + item.data.color + '; border:1px solid ' + item.data.color + ';">:' + item.data.group + '</span>';
+      html += '<div class="prop-row"><span class="prop-key">&lt;id&gt;</span><span class="prop-val">' + item.data.id + '</span></div>';
+    } else {
+      html += '<span class="prop-badge" style="background:rgba(148,163,184,0.2); color:#e2e8f0; border:1px solid #64748b;">[:' + item.data.label + ']</span>';
+      html += '<div class="prop-row"><span class="prop-key">&lt;type&gt;</span><span class="prop-val">' + item.data.label + '</span></div>';
+    }
+
+    const keys = Object.keys(item.data.props);
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      html += '<div class="prop-row"><span class="prop-key">' + k + '</span><span class="prop-val">' + item.data.props[k] + '</span></div>';
+    }
+    body.innerHTML = html;
+  }
+
+  function stepPhysics() {
+    const width = canvas.width;
+    const height = canvas.height;
+    const cx = width / 2;
+    const cy = height / 2;
+
+    for (let i = 0; i < simNodes.length; i++) {
+      const n1 = simNodes[i];
+      if (n1 === draggedNode) continue;
+
+      n1.vx += (cx - n1.x) * 0.008;
+      n1.vy += (cy - n1.y) * 0.008;
+
+      for (let j = 0; j < simNodes.length; j++) {
+        if (i === j) continue;
+        const n2 = simNodes[j];
+        const dx = n1.x - n2.x;
+        const dy = n1.y - n2.y;
+        const distSq = dx * dx + dy * dy || 1;
+        const dist = Math.sqrt(distSq);
+        if (dist < 280) {
+          const force = 3200 / distSq;
+          n1.vx += (dx / dist) * force;
+          n1.vy += (dy / dist) * force;
+        }
+      }
+    }
+
+    for (let i = 0; i < simEdges.length; i++) {
+      const e = simEdges[i];
+      const source = simNodes.find(function(n) { return n.id === e.from; });
+      const target = simNodes.find(function(n) { return n.id === e.to; });
+      if (!source || !target) continue;
+
+      const dx = target.x - source.x;
+      const dy = target.y - source.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const desired = 190;
+      const pull = (dist - desired) * 0.025;
+
+      const fx = (dx / dist) * pull;
+      const fy = (dy / dist) * pull;
+
+      if (source !== draggedNode) {
+        source.vx += fx;
+        source.vy += fy;
+      }
+      if (target !== draggedNode) {
+        target.vx -= fx;
+        target.vy -= fy;
+      }
+    }
+
+    for (let i = 0; i < simNodes.length; i++) {
+      const n = simNodes[i];
+      if (n === draggedNode) continue;
+      n.vx *= 0.84;
+      n.vy *= 0.84;
+      n.x += n.vx;
+      n.y += n.vy;
+
+      const pad = 45;
+      if (n.x < pad) { n.x = pad; n.vx = 0; }
+      if (n.x > width - pad) { n.x = width - pad; n.vx = 0; }
+      if (n.y < pad) { n.y = pad; n.vy = 0; }
+      if (n.y > height - pad) { n.y = height - pad; n.vy = 0; }
+    }
+  }
+
+  function drawGraph() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (let i = 0; i < simEdges.length; i++) {
+      const e = simEdges[i];
+      const s = simNodes.find(function(n) { return n.id === e.from; });
+      const t = simNodes.find(function(n) { return n.id === e.to; });
+      if (!s || !t) continue;
+
+      const angle = Math.atan2(t.y - s.y, t.x - s.x);
+      const startX = s.x + Math.cos(angle) * s.radius;
+      const startY = s.y + Math.sin(angle) * s.radius;
+      const endX = t.x - Math.cos(angle) * (t.radius + 6);
+      const endY = t.y - Math.sin(angle) * (t.radius + 6);
+
+      const isSelected = selectedItem && selectedItem.type === 'edge' && selectedItem.data.id === e.id;
+
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(endX, endY);
+      ctx.strokeStyle = isSelected ? '#38bdf8' : (e.label === 'RECOMENDADO' ? '#f59e0b' : '#475569');
+      ctx.lineWidth = isSelected ? 3 : 2;
+      if (e.label === 'RECOMENDADO') {
+        ctx.setLineDash([6, 4]);
+      } else {
+        ctx.setLineDash([]);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.beginPath();
+      ctx.moveTo(endX, endY);
+      ctx.lineTo(endX - 10 * Math.cos(angle - Math.PI / 6), endY - 10 * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(endX - 10 * Math.cos(angle + Math.PI / 6), endY - 10 * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fillStyle = isSelected ? '#38bdf8' : (e.label === 'RECOMENDADO' ? '#f59e0b' : '#64748b');
+      ctx.fill();
+
+      const midX = (startX + endX) / 2;
+      const midY = (startY + endY) / 2;
+      e._midX = midX;
+      e._midY = midY;
+
+      ctx.font = '600 11px Inter, sans-serif';
+      const textWidth = ctx.measureText(e.label).width;
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(midX - textWidth / 2 - 4, midY - 8, textWidth + 8, 16);
+
+      ctx.fillStyle = isSelected ? '#38bdf8' : '#cbd5e1';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(e.label, midX, midY);
+    }
+
+    for (let i = 0; i < simNodes.length; i++) {
+      const n = simNodes[i];
+      const isSelected = selectedItem && selectedItem.type === 'node' && selectedItem.data.id === n.id;
+
+      if (isSelected) {
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.radius + 6, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.fill();
+      }
+
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
+      ctx.fillStyle = n.color;
+      ctx.fill();
+      ctx.lineWidth = isSelected ? 3 : 2;
+      ctx.strokeStyle = isSelected ? '#ffffff' : '#0f172a';
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 12px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(n.label, n.x, n.y);
+    }
+  }
+
+  function animateGraph() {
+    if (document.getElementById('view-browser').classList.contains('active')) {
+      stepPhysics();
+      drawGraph();
+    }
+    animationId = requestAnimationFrame(animateGraph);
+  }
+
+  function getPointerPos(evt) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+    const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  }
+
+  function handlePointerDown(evt) {
+    const pos = getPointerPos(evt);
+    for (let i = simNodes.length - 1; i >= 0; i--) {
+      const n = simNodes[i];
+      const dx = pos.x - n.x;
+      const dy = pos.y - n.y;
+      if (dx * dx + dy * dy <= n.radius * n.radius) {
+        draggedNode = n;
+        selectedItem = { type: 'node', data: n };
+        renderInspector(selectedItem);
+        return;
+      }
+    }
+
+    for (let i = 0; i < simEdges.length; i++) {
+      const e = simEdges[i];
+      if (e._midX !== undefined) {
+        const dx = pos.x - e._midX;
+        const dy = pos.y - e._midY;
+        if (dx * dx + dy * dy <= 400) {
+          selectedItem = { type: 'edge', data: e };
+          renderInspector(selectedItem);
+          return;
+        }
+      }
+    }
+
+    selectedItem = null;
+    renderInspector(null);
+  }
+
+  function handlePointerMove(evt) {
+    if (!draggedNode) return;
+    if (evt.cancelable) evt.preventDefault();
+    const pos = getPointerPos(evt);
+    draggedNode.x = pos.x;
+    draggedNode.y = pos.y;
+    draggedNode.vx = 0;
+    draggedNode.vy = 0;
+  }
+
+  function handlePointerUp() {
+    draggedNode = null;
+  }
+
+  canvas.addEventListener('mousedown', handlePointerDown);
+  window.addEventListener('mousemove', handlePointerMove);
+  window.addEventListener('mouseup', handlePointerUp);
+
+  canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
+  window.addEventListener('touchmove', handlePointerMove, { passive: false });
+  window.addEventListener('touchend', handlePointerUp);
+
+  animateGraph();
+</script>
+</body>
+</html>
